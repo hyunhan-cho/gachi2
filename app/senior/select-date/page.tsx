@@ -28,14 +28,22 @@ export default function SelectDatePage() {
 
     setIsSubmitting(true);
 
+    // --- V V V 이 부분이 시간대 문제를 해결하기 위해 수정된 부분입니다 V V V ---
+    const year = date.getFullYear();
+    // getMonth()는 0부터 시작하므로 +1 해주고, 1~9월은 앞에 0을 붙여줍니다.
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    // 1~9일은 앞에 0을 붙여줍니다.
+    const day = String(date.getDate()).padStart(2, '0');
+    const formattedDate = `${year}-${month}-${day}`;
+    // --- ^ ^ ^ 여기까지 수정되었습니다 ^ ^ ^ ---
+
     const requestData = {
       teamId: teamId,
-      gameDate: date.toISOString().split('T')[0],
+      gameDate: formattedDate, // 수정된 날짜 포맷을 사용합니다.
       numberOfTickets: accompanyingPerson ? 2 : 1,
     };
 
     try {
-      // --- V V V 바로 이 부분의 주소만 수정하면 됩니다 V V V ---
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/requests/create/`, {
         method: 'POST',
         headers: {
@@ -46,9 +54,8 @@ export default function SelectDatePage() {
       });
 
       if (!response.ok) {
-        // 백엔드에서 온 에러 메시지를 보여주면 더 좋습니다.
         const errorData = await response.json();
-        throw new Error(errorData.detail || '도움 요청에 실패했습니다. 잠시 후 다시 시도해주세요.');
+        throw new Error(errorData.error || '도움 요청에 실패했습니다. 잠시 후 다시 시도해주세요.');
       }
       
       alert("도움 요청이 성공적으로 접수되었습니다.");
