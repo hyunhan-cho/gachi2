@@ -6,33 +6,60 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useRouter, useSearchParams } from "next/navigation"
-import React from "react"
+import React, { useState } from "react"
 import { KBO_TEAMS } from "@/components/kbo-teams"
 
 export default function SelectDatePage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const teamId = searchParams.get("teamId")
+  
   const selectedTeam = KBO_TEAMS.find((t) => t.id === teamId)
 
-  const [date, setDate] = React.useState<Date | undefined>(new Date())
-  const [accompanyingPerson, setAccompanyingPerson] = React.useState(false)
+  const [date, setDate] = useState<Date | undefined>(new Date())
+  const [accompanyingPerson, setAccompanyingPerson] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = () => {
-    if (!date) {
-      alert("날짜를 선택해주세요.")
-      return
+  const handleSubmit = async () => {
+    if (!date || !teamId) {
+      alert("날짜 또는 팀 정보가 올바르지 않습니다.");
+      return;
     }
-    console.log("Selected date:", date, "Accompanying:", accompanyingPerson, "Team:", selectedTeam?.name)
-    // Navigate to confirmation or next step
-    // For now, let's assume this creates a request and goes to My Page
-    // Or, it goes to a pre-confirmation screen if the prompt's "Reservation Confirmation" is before helper.
-    // Given the prompt's button names for confirmation, it's likely after helper.
-    // So, this step would submit a request.
-    alert(
-      `요청이 접수되었습니다: ${selectedTeam?.name}, ${date.toLocaleDateString()}, 동반 ${accompanyingPerson ? "1명" : "없음"}`,
-    )
-    router.push("/senior/my-page")
+
+    setIsSubmitting(true);
+
+    const requestData = {
+      teamId: teamId,
+      gameDate: date.toISOString().split('T')[0],
+      numberOfTickets: accompanyingPerson ? 2 : 1,
+    };
+
+    try {
+      // --- V V V 바로 이 부분의 주소만 수정하면 됩니다 V V V ---
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/requests/create/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+        },
+        body: JSON.stringify(requestData),
+      });
+
+      if (!response.ok) {
+        // 백엔드에서 온 에러 메시지를 보여주면 더 좋습니다.
+        const errorData = await response.json();
+        throw new Error(errorData.detail || '도움 요청에 실패했습니다. 잠시 후 다시 시도해주세요.');
+      }
+      
+      alert("도움 요청이 성공적으로 접수되었습니다.");
+      router.push("/senior/my-page");
+
+    } catch (error) {
+      console.error("Submit request failed:", error);
+      alert(error instanceof Error ? error.message : "알 수 없는 오류가 발생했습니다.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   if (!selectedTeam) {
@@ -58,7 +85,7 @@ export default function SelectDatePage() {
               selected={date}
               onSelect={setDate}
               className="rounded-md border shadow-sm p-4 bg-white"
-              disabled={(date) => date < new Date(new Date().setDate(new Date().getDate() - 1))} // Disable past dates
+              disabled={(date) => date < new Date(new Date().setDate(new Date().getDate() - 1))}
             />
           </div>
 
@@ -80,6 +107,7 @@ export default function SelectDatePage() {
               size="lg"
               className="text-lg border-brand-navy text-brand-navy hover:bg-brand-sky/20 w-full sm:w-auto"
               onClick={() => router.back()}
+              disabled={isSubmitting}
             >
               이전 (팀 다시 선택)
             </Button>
@@ -87,8 +115,9 @@ export default function SelectDatePage() {
               onClick={handleSubmit}
               size="lg"
               className="text-lg bg-brand-navy hover:bg-brand-navy-light text-white w-full sm:w-auto"
+              disabled={isSubmitting}
             >
-              이 내용으로 도움 요청하기
+              {isSubmitting ? "요청하는 중..." : "이 내용으로 도움 요청하기"}
             </Button>
           </div>
         </CardContent>

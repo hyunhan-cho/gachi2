@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Award, Users, CalendarCheck2, Star, ShieldCheck, ListChecks } from "lucide-react"
 
@@ -11,46 +12,34 @@ interface HelpActivity {
   status: "도움 완료" | "진행 중" // "진행 중" might be for requests helper is currently handling
 }
 
-// Updated mock data for more clarity
-const mockActivities: HelpActivity[] = [
-  {
-    id: "act1",
-    seniorFanName: "최 어르신",
-    teamName: "삼성 라이온즈",
-    gameDate: "2025년 6월 5일",
-    status: "도움 완료",
-  },
-  {
-    id: "act2",
-    seniorFanName: "윤 할아버지",
-    teamName: "한화 이글스",
-    gameDate: "2025년 5월 20일",
-    status: "도움 완료",
-  },
-  {
-    id: "act3",
-    seniorFanName: "김 어르신",
-    teamName: "LG 트윈스",
-    gameDate: "2025년 7월 15일",
-    status: "진행 중", // Example of an ongoing help
-  },
-  {
-    id: "act4",
-    seniorFanName: "박 장년",
-    teamName: "두산 베어스",
-    gameDate: "2025년 4월 10일",
-    status: "도움 완료",
-  },
-]
-
-const summaryStats = {
-  totalSessionsCompleted: mockActivities.filter((act) => act.status === "도움 완료").length,
-  mileagePoints: mockActivities.filter((act) => act.status === "도움 완료").length * 500, // Example: 500 points per completed session
+interface SummaryStats {
+  totalSessionsCompleted: number
+  mileagePoints: number
 }
 
 export default function HelperMyPage() {
-  const completedActivities = mockActivities.filter((activity) => activity.status === "도움 완료")
-  const inProgressActivities = mockActivities.filter((activity) => activity.status === "진행 중")
+  const [activities, setActivities] = useState<HelpActivity[]>([])
+  const [summaryStats, setSummaryStats] = useState<SummaryStats>({
+    totalSessionsCompleted: 0,
+    mileagePoints: 0
+  })
+
+  useEffect(() => {
+    // Fetch helper activities
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/helper/activities`)
+      .then(res => res.json())
+      .then(data => setActivities(data))
+      .catch(() => setActivities([]))
+
+    // Fetch helper stats
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/helper/stats`)
+      .then(res => res.json())
+      .then(data => setSummaryStats(data))
+      .catch(() => setSummaryStats({ totalSessionsCompleted: 0, mileagePoints: 0 }))
+  }, [])
+
+  const completedActivities = activities.filter((activity) => activity.status === "도움 완료")
+  const inProgressActivities = activities.filter((activity) => activity.status === "진행 중")
 
   return (
     <div className="py-8">

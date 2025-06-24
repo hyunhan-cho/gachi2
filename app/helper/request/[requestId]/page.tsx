@@ -1,6 +1,6 @@
 "use client"
 
-import React from "react"
+import React, { useEffect, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -8,7 +8,7 @@ import { ArrowLeft, CheckCircle, MessageSquare, Phone, UserCircle2, CalendarDays
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 
-// Mock data structure for a detailed request
+// API data structure for a detailed request
 interface DetailedHelpRequest {
   id: string
   seniorFanName: string
@@ -23,46 +23,16 @@ interface DetailedHelpRequest {
   status: "REQUESTED" | "IN_PROGRESS" | "TICKET_PROPOSED" | "COMPLETED"
 }
 
-// Mock function to fetch request details
-const fetchRequestDetails = (requestId: string): DetailedHelpRequest | undefined => {
-  // In a real app, this would be an API call
-  const mockRequests: DetailedHelpRequest[] = [
-    {
-      id: "hr1",
-      seniorFanName: "김 어르신",
-      teamId: "lg",
-      teamName: "LG 트윈스",
-      gameDate: "2025년 7월 15일",
-      gameTime: "18:30",
-      numberOfTickets: 2,
-      contactPreference: "phone",
-      phoneNumber: "010-1234-5678", // Example, handle privacy
-      notes: "1루 응원석 근처면 좋겠습니다. 휠체어 접근 가능한 좌석이면 더 좋습니다.",
-      status: "IN_PROGRESS",
-    },
-    {
-      id: "hr2",
-      seniorFanName: "박 할머니",
-      teamId: "doosan",
-      teamName: "두산 베어스",
-      gameDate: "2025년 7월 20일",
-      gameTime: "14:00",
-      numberOfTickets: 1,
-      contactPreference: "chat",
-      notes: "조용한 좌석을 선호합니다.",
-      status: "IN_PROGRESS",
-    },
-    {
-      id: "hr3",
-      seniorFanName: "이 선생님",
-      teamId: "kt",
-      teamName: "KT 위즈",
-      gameDate: "2025년 7월 18일",
-      numberOfTickets: 1,
-      status: "IN_PROGRESS",
-    },
-  ]
-  return mockRequests.find((req) => req.id === requestId)
+// API function to fetch request details
+const fetchRequestDetails = async (requestId: string): Promise<DetailedHelpRequest | null> => {
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/help-requests/${requestId}`)
+    if (!response.ok) return null
+    return await response.json()
+  } catch (error) {
+    console.error('Failed to fetch request details:', error)
+    return null
+  }
 }
 
 const statusMap = {
@@ -83,15 +53,15 @@ export default function HelperRequestDetailPage() {
 
   React.useEffect(() => {
     if (requestId) {
-      const details = fetchRequestDetails(requestId)
-      if (details) {
-        // Simulate API call and update status to IN_PROGRESS if it was REQUESTED
-        setRequestDetails({ ...details, status: "IN_PROGRESS" })
-      } else {
-        // Handle case where request is not found
-        setRequestDetails(null)
-      }
-      setIsLoading(false)
+      fetchRequestDetails(requestId).then((details) => {
+        if (details) {
+          // Update status to IN_PROGRESS if it was REQUESTED
+          setRequestDetails({ ...details, status: "IN_PROGRESS" })
+        } else {
+          setRequestDetails(null)
+        }
+        setIsLoading(false)
+      })
     }
   }, [requestId])
 

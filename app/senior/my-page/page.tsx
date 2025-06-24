@@ -13,8 +13,10 @@ import {
   CalendarDays,
   UsersIcon,
   UserCircle,
-} from "lucide-react" // Added more icons
+} from "lucide-react"
+import React, { useEffect, useState } from "react" // useEffect, useState 추가
 
+// API로부터 받아올 데이터의 타입을 정의합니다.
 type RequestStatus =
   | "WAITING_FOR_HELPER"
   | "HELPER_MATCHED"
@@ -32,58 +34,10 @@ interface ReservationRequest {
   statusText: string
   actionLink?: string
   actionText?: string
-  helperName?: string // Optional: if helper is matched
+  helperName?: string
 }
 
-const mockRequests: ReservationRequest[] = [
-  {
-    id: "req1",
-    teamName: "LG 트윈스",
-    matchDate: "2025년 7월 15일 (화) 18:30",
-    numberOfTickets: 2,
-    status: "TICKET_PROPOSED",
-    statusText: "헬퍼가 티켓을 찾았어요!",
-    actionLink: "/senior/confirmation?requestId=req1",
-    actionText: "티켓 확인 및 확정",
-    helperName: "김헬퍼",
-  },
-  {
-    id: "req2",
-    teamName: "두산 베어스",
-    matchDate: "2025년 7월 20일 (일) 14:00",
-    numberOfTickets: 1,
-    status: "WAITING_FOR_HELPER",
-    statusText: "헬퍼 배정 대기 중",
-  },
-  {
-    id: "req3",
-    teamName: "KIA 타이거즈",
-    matchDate: "2025년 6월 10일 (토) 17:00",
-    numberOfTickets: 2,
-    status: "COMPLETED",
-    statusText: "관람 완료",
-    helperName: "박도움",
-  },
-  {
-    id: "req4",
-    teamName: "SSG 랜더스",
-    matchDate: "2025년 7월 22일 (화) 18:30",
-    numberOfTickets: 1,
-    status: "HELPER_MATCHED",
-    statusText: "헬퍼 매칭! 티켓 찾는 중",
-    helperName: "이친절",
-  },
-  {
-    id: "req5",
-    teamName: "롯데 자이언츠",
-    matchDate: "2025년 8월 1일 (금) 18:30",
-    numberOfTickets: 2,
-    status: "SEAT_CONFIRMED",
-    statusText: "좌석 확정! 경기 당일 만나요",
-    helperName: "최봉사",
-  },
-]
-
+// Status에 따라 아이콘을 렌더링하는 컴포넌트 (이전과 동일)
 function StatusIcon({ status }: { status: RequestStatus }) {
   switch (status) {
     case "WAITING_FOR_HELPER":
@@ -103,8 +57,47 @@ function StatusIcon({ status }: { status: RequestStatus }) {
 }
 
 export default function SeniorMyPage() {
-  const currentRequests = mockRequests.filter((r) => r.status !== "COMPLETED" && r.status !== "CANCELLED")
-  const pastRequests = mockRequests.filter((r) => r.status === "COMPLETED" || r.status === "CANCELLED")
+  // 1. API로부터 받아온 데이터를 저장할 state들을 만듭니다.
+  const [currentRequests, setCurrentRequests] = useState<ReservationRequest[]>([]);
+  const [pastRequests, setPastRequests] = useState<ReservationRequest[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // 2. 페이지가 로드될 때, 나의 요청 목록 API를 호출합니다.
+  useEffect(() => {
+    const fetchMyRequests = async () => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/requests/my/`, {
+          headers: {
+            // 로그인된 사용자의 요청이므로 인증 토큰이 필요합니다.
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}` // 예시: localStorage에서 토큰 가져오기
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error("요청 목록을 불러오는데 실패했습니다.");
+        }
+        
+        // 백엔드에서 currentRequests와 pastRequests를 구분해서 보내준다고 가정합니다.
+        const data = await response.json();
+        setCurrentRequests(data.currentRequests || []);
+        setPastRequests(data.pastRequests || []);
+
+      } catch (error) {
+        console.error("Failed to fetch requests:", error);
+        alert("요청 목록을 불러오는 중 오류가 발생했습니다.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchMyRequests();
+  }, []); // 빈 배열을 전달하여 한 번만 실행되도록 합니다.
+
+
+  // 3. 로딩 중일 때 표시할 UI
+  if (isLoading) {
+    return <div className="text-center py-10">요청 현황을 불러오는 중입니다...</div>;
+  }
 
   return (
     <div className="py-8">
@@ -113,6 +106,7 @@ export default function SeniorMyPage() {
         <p className="text-xl text-gray-600 mt-2">야구 경기 예매 요청 상태를 확인하세요.</p>
       </header>
 
+      {/* 이하의 JSX 코드는 state(currentRequests, pastRequests)를 사용하도록 변경되었을 뿐, 구조는 동일합니다. */}
       <section className="mb-12">
         <h3 className="text-2xl font-semibold text-brand-navy mb-6">현재 진행 중인 요청</h3>
         {currentRequests.length > 0 ? (
